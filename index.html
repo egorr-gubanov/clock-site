@@ -2,9 +2,10 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
     <meta name="theme-color" content="#f8f9fa">
     <title>Часы с именами</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         /* CSS Reset и базовые стили */
         * {
@@ -14,29 +15,20 @@
         }
 
         :root {
-            /* Светлая тема */
-            --bg-color: #f8f9fa;
-            --text-color: #2c3e50;
+            /* Default colors - will be overridden by Telegram theme */
+            --bg-color: var(--tg-theme-bg-color, #f8f9fa);
+            --text-color: var(--tg-theme-text-color, #2c3e50);
+            --hint-color: var(--tg-theme-hint-color, #999999);
+            --button-color: var(--tg-theme-button-color, #2481cc);
+            --button-text-color: var(--tg-theme-button-text-color, #ffffff);
+            --secondary-bg-color: var(--tg-theme-secondary-bg-color, #ffffff);
             --border-color: #e9ecef;
             --hover-color: #e3f2fd;
             --active-color: #bbdefb;
-            --button-bg: #ffffff;
-            --button-border: #dee2e6;
+            --button-bg: var(--secondary-bg-color);
+            --button-border: var(--border-color);
             --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        [data-theme="dark"] {
-            /* Темная тема */
-            --bg-color: #1a1a1a;
-            --text-color: #e9ecef;
-            --border-color: #495057;
-            --hover-color: #2d3748;
-            --active-color: #4a5568;
-            --button-bg: #2d3748;
-            --button-border: #4a5568;
-            --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-            --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
 
         body {
@@ -45,25 +37,29 @@
             color: var(--text-color);
             line-height: 1.6;
             min-height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 1rem;
             transition: background-color 0.2s ease, color 0.2s ease;
+            overflow-x: hidden;
         }
 
         .container {
-            max-width: 600px;
             width: 100%;
+            max-width: 100vw;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 2rem;
+            gap: 1.5rem;
+            padding: 1rem;
         }
 
         .header {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
             width: 100%;
             padding: 0 1rem;
@@ -79,38 +75,33 @@
             display: flex;
             gap: 1rem;
             align-items: center;
-        }
-
-        .theme-control {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.25rem;
-        }
-
-        .theme-label {
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: var(--text-color);
-            opacity: 0.8;
-            text-align: center;
+            justify-content: center;
+            margin-top: 1rem;
         }
 
         .btn {
             background: var(--button-bg);
             border: 1px solid var(--button-border);
             color: var(--text-color);
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 1rem;
             font-family: inherit;
             transition: all 0.2s ease;
-            min-height: 44px;
-            min-width: 44px;
+            min-height: 48px;
+            min-width: 48px;
             display: flex;
             align-items: center;
             justify-content: center;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: var(--hint-color);
         }
 
         .btn:hover {
@@ -123,40 +114,10 @@
             outline-offset: 2px;
         }
 
-        .theme-toggle {
-            position: relative;
-            width: 50px;
-            height: 24px;
-            background: var(--border-color);
-            border-radius: 12px;
-            cursor: pointer;
-            transition: background 0.2s ease;
-        }
-
-        .theme-toggle::after {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 20px;
-            height: 20px;
-            background: white;
-            border-radius: 50%;
-            transition: transform 0.2s ease;
-        }
-
-        [data-theme="dark"] .theme-toggle {
-            background: var(--active-color);
-        }
-
-        [data-theme="dark"] .theme-toggle::after {
-            transform: translateX(26px);
-        }
-
         .clock-container {
             position: relative;
-            width: min(90vw, 400px);
-            height: min(90vw, 400px);
+            width: min(95vw, 400px);
+            height: min(95vw, 400px);
             max-width: 400px;
             max-height: 400px;
         }
@@ -168,19 +129,11 @@
             filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
         }
 
-        [data-theme="dark"] .clock-svg {
-            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
-        }
-
         .clock-face {
             fill: url(#clockGradient);
             stroke: var(--border-color);
             stroke-width: 3;
             filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
-        }
-
-        [data-theme="dark"] .clock-face {
-            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
         }
 
         .clock-inner {
@@ -517,6 +470,7 @@
         @media (max-width: 480px) {
             .container {
                 gap: 1rem;
+                padding: 0.5rem;
             }
 
             .header {
@@ -533,30 +487,28 @@
                 justify-content: center;
             }
 
-            .theme-label {
-                font-size: 0.7rem;
-            }
-
             .clock-container {
-                width: min(85vw, 350px);
-                height: min(85vw, 350px);
+                width: min(90vw, 350px);
+                height: min(90vw, 350px);
             }
 
             .hour-text {
-                font-size: 10px;
+                font-size: 11px;
                 max-width: 50px;
             }
 
             .name-input {
-                max-width: 70px;
-                font-size: 11px;
+                max-width: 80px;
+                font-size: 12px;
+                padding: 0.5rem;
+                border-radius: 6px;
             }
 
             .name-label {
-                font-size: 0.75rem;
-                padding: 0.3rem 0.6rem;
-                min-width: 50px;
-                max-width: 100px;
+                font-size: 0.8rem;
+                padding: 0.4rem 0.8rem;
+                min-width: 60px;
+                max-width: 120px;
             }
         }
 
@@ -584,10 +536,14 @@
             .name-input {
                 -webkit-appearance: none;
                 appearance: none;
-                border-radius: 4px;
+                border-radius: 6px;
             }
 
             .btn {
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            .hour-segment, .hour-segment-hit, .hour-number {
                 -webkit-tap-highlight-color: transparent;
             }
         }
@@ -597,13 +553,11 @@
     <div class="container">
         <div class="header">
             <h1 class="title">English clock</h1>
-            <div class="controls">
-                <button class="btn" id="resetBtn" aria-label="Сбросить все имена">Сбросить</button>
-                <div class="theme-control">
-                    <span class="theme-label" id="themeLabel">Тема</span>
-                    <div class="theme-toggle" id="themeToggle" role="button" aria-label="Переключить тему" tabindex="0"></div>
-                </div>
-            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" id="resetBtn" aria-label="Сбросить все имена" disabled>Сбросить</button>
+            <button class="btn" id="sendBtn" aria-label="Отправить имена в Telegram" style="display: none;">Отправить</button>
         </div>
 
         <div class="clock-container">
@@ -679,7 +633,6 @@
         class ClockApp {
             constructor() {
                 this.names = {};
-                this.theme = 'light';
                 this.activeSegment = null;
                 this.inputElement = null;
                 this.tooltipShown = false;
@@ -688,10 +641,75 @@
             }
 
             init() {
+                this.initTelegram();
                 this.loadData();
                 this.createClock();
                 this.bindEvents();
                 this.showTooltipIfNeeded();
+            }
+
+            // Инициализация Telegram WebApp
+            initTelegram() {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    const tg = window.Telegram.WebApp;
+                    
+                    // Инициализируем WebApp
+                    tg.ready();
+                    
+                    // Применяем тему из Telegram
+                    this.applyTelegramTheme();
+                    
+                    // Слушаем изменения темы
+                    tg.onEvent('themeChanged', () => {
+                        this.applyTelegramTheme();
+                    });
+                    
+                    // Развернуть WebApp на весь экран
+                    tg.expand();
+                    
+                    // Отключить кнопку назад
+                    tg.BackButton.hide();
+                    
+                    // Показать кнопку отправки данных в Telegram
+                    const sendBtn = document.getElementById('sendBtn');
+                    if (sendBtn) {
+                        sendBtn.style.display = 'flex';
+                    }
+                }
+            }
+
+            // Применение темы Telegram
+            applyTelegramTheme() {
+                if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.themeParams) {
+                    const themeParams = window.Telegram.WebApp.themeParams;
+                    const root = document.documentElement;
+                    
+                    // Устанавливаем CSS переменные для Telegram темы
+                    if (themeParams.bg_color) {
+                        root.style.setProperty('--tg-theme-bg-color', themeParams.bg_color);
+                    }
+                    if (themeParams.text_color) {
+                        root.style.setProperty('--tg-theme-text-color', themeParams.text_color);
+                    }
+                    if (themeParams.hint_color) {
+                        root.style.setProperty('--tg-theme-hint-color', themeParams.hint_color);
+                    }
+                    if (themeParams.button_color) {
+                        root.style.setProperty('--tg-theme-button-color', themeParams.button_color);
+                    }
+                    if (themeParams.button_text_color) {
+                        root.style.setProperty('--tg-theme-button-text-color', themeParams.button_text_color);
+                    }
+                    if (themeParams.secondary_bg_color) {
+                        root.style.setProperty('--tg-theme-secondary-bg-color', themeParams.secondary_bg_color);
+                    }
+                    
+                    // Обновляем theme-color мета тег
+                    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+                    if (metaThemeColor && themeParams.bg_color) {
+                        metaThemeColor.setAttribute('content', themeParams.bg_color);
+                    }
+                }
             }
 
             // Загрузка данных из localStorage
@@ -700,18 +718,13 @@
                 if (saved) {
                     const data = JSON.parse(saved);
                     this.names = data.names || {};
-                    this.theme = data.theme || 'light';
                 }
-                
-                // Применяем тему
-                document.documentElement.setAttribute('data-theme', this.theme);
             }
 
             // Сохранение данных в localStorage
             saveData() {
                 const data = {
-                    names: this.names,
-                    theme: this.theme
+                    names: this.names
                 };
                 localStorage.setItem('clockApp', JSON.stringify(data));
             }
@@ -905,14 +918,17 @@
                     }
                 });
 
-                // Кнопка сброса
-                document.getElementById('resetBtn').addEventListener('click', () => {
-                    this.resetAll();
+                // Кнопка сброса отключена
+                const resetBtn = document.getElementById('resetBtn');
+                resetBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Кнопка отключена для предотвращения очистки данных
                 });
 
-                // Переключатель темы
-                document.getElementById('themeToggle').addEventListener('click', () => {
-                    this.toggleTheme();
+                // Кнопка отправки в Telegram
+                const sendBtn = document.getElementById('sendBtn');
+                sendBtn.addEventListener('click', () => {
+                    this.sendDataToTelegram();
                 });
 
                 // Закрытие подсказки
@@ -1054,29 +1070,6 @@
                 });
             }
 
-            // Сброс всех имен
-            resetAll() {
-                if (confirm('Вы уверены, что хотите сбросить все имена?')) {
-                    this.names = {};
-                    this.saveData();
-                    
-                    // Удаляем все внешние метки
-                    document.querySelectorAll('.name-label').forEach(label => label.remove());
-                    
-                    // Обновляем отображение
-                    for (let hour = 1; hour <= 12; hour++) {
-                        this.updateDisplay(hour);
-                    }
-                }
-            }
-
-            // Переключение темы
-            toggleTheme() {
-                this.theme = this.theme === 'light' ? 'dark' : 'light';
-                document.documentElement.setAttribute('data-theme', this.theme);
-                this.saveData();
-            }
-
             // Показ подсказки при первом запуске
             showTooltipIfNeeded() {
                 const hasNames = Object.keys(this.names).length > 0;
@@ -1091,6 +1084,42 @@
             // Скрытие подсказки
             hideTooltip() {
                 document.getElementById('tooltip').classList.remove('show');
+            }
+
+            // Отправка данных в Telegram
+            sendDataToTelegram() {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    const namesCount = Object.keys(this.names).length;
+                    if (namesCount === 0) {
+                        // Показываем уведомление пользователю
+                        const tooltip = document.getElementById('tooltip');
+                        const tooltipText = tooltip.querySelector('.tooltip-text');
+                        tooltipText.textContent = 'Добавьте имена на часы перед отправкой!';
+                        tooltip.classList.add('show');
+                        setTimeout(() => tooltip.classList.remove('show'), 3000);
+                        return;
+                    }
+                    
+                    // Подготавливаем данные для отправки
+                    const dataToSend = {
+                        names: this.names,
+                        timestamp: new Date().toISOString(),
+                        totalNames: namesCount
+                    };
+                    
+                    try {
+                        window.Telegram.WebApp.sendData(JSON.stringify(dataToSend));
+                    } catch (error) {
+                        console.error('Ошибка отправки данных в Telegram:', error);
+                    }
+                } else {
+                    // Если не в Telegram, показываем уведомление
+                    const tooltip = document.getElementById('tooltip');
+                    const tooltipText = tooltip.querySelector('.tooltip-text');
+                    tooltipText.textContent = 'Эта функция доступна только в Telegram WebApp';
+                    tooltip.classList.add('show');
+                    setTimeout(() => tooltip.classList.remove('show'), 3000);
+                }
             }
         }
 
