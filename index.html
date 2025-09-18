@@ -96,6 +96,41 @@
             text-align: center;
         }
 
+        .language-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .language-toggle {
+            background: var(--button-bg);
+            border: 1px solid var(--button-border);
+            color: var(--text-color);
+            padding: 0.3rem 0.6rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-family: inherit;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            min-height: 32px;
+            min-width: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .language-toggle:hover {
+            background: var(--hover-color);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .language-toggle:focus {
+            outline: 2px solid var(--active-color);
+            outline-offset: 2px;
+        }
+
         .btn {
             background: var(--button-bg);
             border: 1px solid var(--button-border);
@@ -596,9 +631,13 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1 class="title">English clock</h1>
+            <h1 class="title" id="appTitle">English clock</h1>
             <div class="controls">
                 <button class="btn" id="resetBtn" aria-label="Сбросить все имена">Сбросить</button>
+                <div class="language-control">
+                    <span class="theme-label" id="languageLabel">Язык</span>
+                    <button class="language-toggle" id="languageToggle" aria-label="Переключить язык">RU</button>
+                </div>
                 <div class="theme-control">
                     <span class="theme-label" id="themeLabel">Тема</span>
                     <div class="theme-toggle" id="themeToggle" role="button" aria-label="Переключить тему" tabindex="0"></div>
@@ -658,7 +697,7 @@
 
     <!-- Подсказка -->
     <div class="tooltip" id="tooltip">
-        <div class="tooltip-text">Нажмите на часовой сегмент, чтобы ввести имя</div>
+        <div class="tooltip-text" id="tooltipText">Нажмите на часовой сегмент, чтобы ввести имя</div>
         <button class="tooltip-close" id="tooltipClose">Понятно</button>
     </div>
 
@@ -670,16 +709,50 @@
          * - 12-часовой циферблат с возможностью назначения имен
          * - Сохранение данных в localStorage
          * - Поддержка светлой/темной темы
+         * - Поддержка русского и английского языков
          * - Адаптивный дизайн для мобильных устройств
          * - Полная поддержка доступности
          * 
          * Запуск: просто откройте index.html в браузере
          */
 
+        // Объект переводов
+        const TRANSLATIONS = {
+            ru: {
+                title: 'Часы с именами',
+                resetButton: 'Сбросить',
+                resetButtonAria: 'Сбросить все имена',
+                themeLabel: 'Тема',
+                languageLabel: 'Язык',
+                themeToggleAria: 'Переключить тему',
+                languageToggleAria: 'Переключить язык',
+                tooltipText: 'Нажмите на часовой сегмент, чтобы ввести имя',
+                tooltipClose: 'Понятно',
+                resetConfirm: 'Вы уверены, что хотите сбросить все имена?',
+                hourAria: 'Час {hour}. {name}',
+                noName: 'Без имени'
+            },
+            en: {
+                title: 'Clock with Names',
+                resetButton: 'Reset',
+                resetButtonAria: 'Reset all names',
+                themeLabel: 'Theme',
+                languageLabel: 'Language',
+                themeToggleAria: 'Toggle theme',
+                languageToggleAria: 'Toggle language',
+                tooltipText: 'Click on a hour segment to enter a name',
+                tooltipClose: 'Got it',
+                resetConfirm: 'Are you sure you want to reset all names?',
+                hourAria: 'Hour {hour}. {name}',
+                noName: 'No name'
+            }
+        };
+
         class ClockApp {
             constructor() {
                 this.names = {};
                 this.theme = 'light';
+                this.language = 'ru'; // По умолчанию русский
                 this.activeSegment = null;
                 this.inputElement = null;
                 this.tooltipShown = false;
@@ -691,7 +764,20 @@
                 this.loadData();
                 this.createClock();
                 this.bindEvents();
+                this.updateLanguage();
                 this.showTooltipIfNeeded();
+            }
+
+            // Функция для получения перевода
+            t(key, params = {}) {
+                let text = TRANSLATIONS[this.language][key] || key;
+                
+                // Заменяем параметры в тексте
+                Object.keys(params).forEach(param => {
+                    text = text.replace(new RegExp(`\\{${param}\\}`, 'g'), params[param]);
+                });
+                
+                return text;
             }
 
             // Загрузка данных из localStorage
@@ -701,17 +787,21 @@
                     const data = JSON.parse(saved);
                     this.names = data.names || {};
                     this.theme = data.theme || 'light';
+                    this.language = data.language || 'ru';
                 }
                 
                 // Применяем тему
                 document.documentElement.setAttribute('data-theme', this.theme);
+                // Применяем язык
+                document.documentElement.setAttribute('lang', this.language);
             }
 
             // Сохранение данных в localStorage
             saveData() {
                 const data = {
                     names: this.names,
-                    theme: this.theme
+                    theme: this.theme,
+                    language: this.language
                 };
                 localStorage.setItem('clockApp', JSON.stringify(data));
             }
@@ -779,7 +869,7 @@
                     hitArea.setAttribute('data-hour', hour);
                     hitArea.setAttribute('tabindex', '0');
                     hitArea.setAttribute('role', 'button');
-                    hitArea.setAttribute('aria-label', `Час ${hour}. ${this.names[hour] || 'Без имени'}`);
+                    hitArea.setAttribute('aria-label', this.t('hourAria', { hour: hour, name: this.names[hour] || this.t('noName') }));
                     
                     hourSegments.appendChild(hitArea);
 
@@ -794,7 +884,7 @@
                     segment.setAttribute('data-hour', hour);
                     segment.setAttribute('tabindex', '0');
                     segment.setAttribute('role', 'button');
-                    segment.setAttribute('aria-label', `Час ${hour}. ${this.names[hour] || 'Без имени'}`);
+                    segment.setAttribute('aria-label', this.t('hourAria', { hour: hour, name: this.names[hour] || this.t('noName') }));
                     
                     hourSegments.appendChild(segment);
 
@@ -818,7 +908,7 @@
                     number.setAttribute('data-hour', hour);
                     number.setAttribute('tabindex', '0');
                     number.setAttribute('role', 'button');
-                    number.setAttribute('aria-label', `Час ${hour}. ${this.names[hour] || 'Без имени'}`);
+                    number.setAttribute('aria-label', this.t('hourAria', { hour: hour, name: this.names[hour] || this.t('noName') }));
                     number.textContent = hour;
                     hourNumbers.appendChild(number);
 
@@ -913,6 +1003,11 @@
                 // Переключатель темы
                 document.getElementById('themeToggle').addEventListener('click', () => {
                     this.toggleTheme();
+                });
+
+                // Переключатель языка
+                document.getElementById('languageToggle').addEventListener('click', () => {
+                    this.toggleLanguage();
                 });
 
                 // Закрытие подсказки
@@ -1049,14 +1144,17 @@
                 
                 // Обновляем aria-label
                 const segments = document.querySelectorAll(`[data-hour="${hour}"]`);
+                const nameText = this.names[hour] || this.t('noName');
+                const ariaText = this.t('hourAria', { hour: hour, name: nameText });
+                
                 segments.forEach(segment => {
-                    segment.setAttribute('aria-label', `Час ${hour}. ${this.names[hour] || 'Без имени'}`);
+                    segment.setAttribute('aria-label', ariaText);
                 });
             }
 
             // Сброс всех имен
             resetAll() {
-                if (confirm('Вы уверены, что хотите сбросить все имена?')) {
+                if (confirm(this.t('resetConfirm'))) {
                     this.names = {};
                     this.saveData();
                     
@@ -1075,6 +1173,43 @@
                 this.theme = this.theme === 'light' ? 'dark' : 'light';
                 document.documentElement.setAttribute('data-theme', this.theme);
                 this.saveData();
+            }
+
+            // Переключение языка
+            toggleLanguage() {
+                this.language = this.language === 'ru' ? 'en' : 'ru';
+                document.documentElement.setAttribute('lang', this.language);
+                this.saveData();
+                this.updateLanguage();
+            }
+
+            // Обновление всех текстов при смене языка
+            updateLanguage() {
+                // Обновляем заголовок страницы
+                document.title = this.t('title');
+                
+                // Обновляем элементы интерфейса
+                document.getElementById('appTitle').textContent = this.t('title');
+                document.getElementById('resetBtn').textContent = this.t('resetButton');
+                document.getElementById('resetBtn').setAttribute('aria-label', this.t('resetButtonAria'));
+                document.getElementById('themeLabel').textContent = this.t('themeLabel');
+                document.getElementById('languageLabel').textContent = this.t('languageLabel');
+                document.getElementById('themeToggle').setAttribute('aria-label', this.t('themeToggleAria'));
+                document.getElementById('languageToggle').setAttribute('aria-label', this.t('languageToggleAria'));
+                document.getElementById('languageToggle').textContent = this.language.toUpperCase();
+                document.getElementById('tooltipText').textContent = this.t('tooltipText');
+                document.getElementById('tooltipClose').textContent = this.t('tooltipClose');
+                
+                // Обновляем aria-labels для всех часовых сегментов
+                for (let hour = 1; hour <= 12; hour++) {
+                    const segments = document.querySelectorAll(`[data-hour="${hour}"]`);
+                    const nameText = this.names[hour] || this.t('noName');
+                    const ariaText = this.t('hourAria', { hour: hour, name: nameText });
+                    
+                    segments.forEach(segment => {
+                        segment.setAttribute('aria-label', ariaText);
+                    });
+                }
             }
 
             // Показ подсказки при первом запуске
